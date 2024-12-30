@@ -1,8 +1,15 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
+import { log } from 'node:console';
 
 const App: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+
+  const PROGRAM_ID = new PublicKey('2Cm4u7GLtAKWefMqsxanEfGBVySZiUEdPcwT8H7Rfgpx');
+  const URL = 'https://api.devnet.solana.com';
+  const RECEIVER = new PublicKey('7v55QdzPkK3ihtKD1mbRNRKiiJhjGo2Pg9ZPn2p8qtCd');
 
   // Function to check if Phantom Wallet is installed
   const checkIfPhantomIsInstalled = useCallback((): boolean => {
@@ -71,6 +78,53 @@ const App: React.FC = () => {
     checkIfWalletIsConnected();
   }, [checkIfWalletIsConnected]);
 
+  const interactWithContract = useCallback( async () => {
+    if (!walletAddress) {
+      alert('Please connect to Phantom Wallet first!');
+      return;
+    }
+
+    try {
+      const connection = new Connection(URL, 'confirmed');
+      const { solana } = window;
+
+      const blockhash = await connection.getLatestBlockhash('finalized');
+
+      const instruction = new TransactionInstruction({
+        keys: [
+          {
+            pubkey: new PublicKey(walletAddress),
+            isSigner: true,
+            isWritable: true,
+          },
+          {
+            pubkey: RECEIVER,
+            isSigner: false,
+            isWritable: true,
+          },
+        ],
+        programId: PROGRAM_ID,
+      });
+
+      const transaction = new Transaction().add(instruction);
+
+      transaction.recentBlockhash = blockhash.blockhash;
+      transaction.feePayer = new PublicKey(walletAddress);
+
+      const signedTransaction = await solana?.signTransaction(transaction);
+
+      const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+
+
+      const confirmation = await connection.confirmTransaction(signature, 'confirmed');
+      console.log('Transaction confirmed:', confirmation);
+      alert('Transaction confirmed!');
+    } catch (error) {
+      console.log('Error interacting with the contract:', error);
+    }
+  }, [walletAddress]);
+
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 font-mono">
       <div className="w-[550px] h-[200px] mx-auto mt-10 text-center p-6 bg-white shadow-lg rounded-lg">
@@ -96,6 +150,12 @@ const App: React.FC = () => {
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
                 >
                   Disconnect
+                </button>
+                <button
+                onClick={interactWithContract}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition ml-4"
+                >
+                  Sign Contract
                 </button>
               </>
             ) : (
