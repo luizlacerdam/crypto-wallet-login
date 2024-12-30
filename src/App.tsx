@@ -4,60 +4,69 @@ const App: React.FC = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Função para verificar se Phantom Wallet está instalada
+  // Function to check if Phantom Wallet is installed
   const checkIfPhantomIsInstalled = useCallback((): boolean => {
-    return typeof window !== 'undefined' && window.solana && window.solana.isPhantom;
+    return !!(window?.solana?.isPhantom);
   }, []);
+  
 
-  // Função para verificar se a carteira está conectada
+  // Function to check if the wallet is connected
   const checkIfWalletIsConnected = useCallback(async () => {
     if (checkIfPhantomIsInstalled()) {
       const { solana } = window;
       try {
-        // Verifica se a carteira está conectada e pega o endereço
-        const walletAddress = solana.isConnected
+        // Check if the wallet is connected and retrieve the address
+        const walletAddress = solana?.isConnected
           ? solana.publicKey.toString()
           : null;
 
         if (!walletAddress) {
-          const response = await solana.connect({ onlyIfTrusted: true });
+          const response = await solana?.connect({ onlyIfTrusted: true });
+          if (!response) {
+            console.warn('Connection to Phantom Wallet failed!');
+            return;
+          }
           setWalletAddress(response.publicKey.toString());
         } else {
           setWalletAddress(walletAddress);
         }
       } catch (error) {
-        console.error('Erro ao verificar conexão da carteira:', error);
+        console.error('Error checking wallet connection:', error);
       } finally {
         setLoading(false);
       }
     } else {
-      console.warn('Phantom Wallet não está instalada.');
+      console.warn('Phantom Wallet is not installed.');
       setLoading(false);
     }
   }, [checkIfPhantomIsInstalled]);
 
-  // Função para conectar à Phantom Wallet
+  // Function to connect to Phantom Wallet
   const connectWallet = useCallback(async () => {
     if (!checkIfPhantomIsInstalled()) {
-      alert('Phantom Wallet não está instalada!');
+      alert('Phantom Wallet is not installed!');
       return;
     }
 
     try {
       const { solana } = window;
-      const response = await solana.connect();
+      const response = await solana?.connect();
+      if (!response) {
+        alert('Connection to Phantom Wallet failed!');
+        return;
+      }
       setWalletAddress(response.publicKey.toString());
     } catch (err) {
-      console.error('Erro ao conectar à carteira:', err);
+      console.error('Error connecting to the wallet:', err);
     }
   }, [checkIfPhantomIsInstalled]);
 
-  // Função para desconectar da carteira
+  // Function to disconnect from the wallet
   const disconnectWallet = useCallback(() => {
     setWalletAddress(null);
   }, []);
 
-  // Verifica a conexão ao carregar a página
+  // Check connection when the page loads
   useEffect(() => {
     checkIfWalletIsConnected();
   }, [checkIfWalletIsConnected]);
@@ -75,26 +84,26 @@ const App: React.FC = () => {
         ) : (
           <>
             <h1 className="text-2xl font-semibold text-gray-800 mb-4">
-              Conectar à Carteira Phantom
+              Connect to Phantom Wallet
             </h1>
             {walletAddress ? (
               <>
                 <p className="text-gray-600 mb-4">
-                  <span className="font-medium text-gray-800">Conectado:</span> {walletAddress}
+                  <span className="font-medium text-gray-800">Connected:</span> {walletAddress}
                 </p>
                 <button
                   onClick={disconnectWallet}
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
                 >
-                  Desconectar
+                  Disconnect
                 </button>
               </>
             ) : (
               <button
                 onClick={connectWallet}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition mt-6"
               >
-                Conectar à Phantom Wallet
+                Connect to Phantom Wallet
               </button>
             )}
           </>
